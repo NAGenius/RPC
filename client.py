@@ -1,4 +1,5 @@
 from clientstub import ClientStub
+from rpc_pb2 import AddRequest
 import argparse
 
 
@@ -14,6 +15,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     client = ClientStub(args.ip, args.port)
-    result = client.add(1, 2)
+    result = client.add(AddRequest(a=1, b=2))
     print(f'1 + 2 = {result}')
     

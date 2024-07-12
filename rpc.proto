@@ -2,37 +2,39 @@ syntax = "proto3";
 
 package rpc;
 
-message Request {
-    string type = 1;
-    string service_name = 2;
-    string host = 3;
-    int32 port = 4;
-}
-
-message Response {
-    string type = 1;
-    string content = 2;
-    repeated Server servers = 3;
-}
-
 message Server {
     string host = 1;
     int32 port = 2;
 }
 
 message AddRequest {
-    string service_name = 1;
-    int32 a = 2;
-    int32 b = 3;
+    int32 a = 1;
+    int32 b = 2;
 }
 
 message AddResponse {
     int32 sum = 1;
 }
 
-service Calculator {
-    rpc add (AddRequest) returns (AddResponse);
+message Request {
+    string type = 1;
+    string service_name = 2;
+    Server server = 3;
+    AddRequest add = 4;
 }
+
+message Response {
+    string type = 1;
+    string content = 2;
+    repeated Server servers = 3;
+    AddResponse add = 4;
+}
+
+
+
+// service Calculator {
+//     rpc add (AddRequest) returns (AddResponse);
+// }
 
 // message RegisterRequest {
 //     string type = 1;

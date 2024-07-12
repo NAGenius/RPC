@@ -1,5 +1,5 @@
 
-
+from rpc_pb2 import AddRequest, AddResponse
 import argparse
 
 from serverstub import ServerStub
@@ -7,12 +7,12 @@ from service import Service
 
 class MyService(Service):
     
-    def add(self, a: int, b: int) -> int:
-        return a + b
+    def add(self, AddRequest) -> AddResponse:
+        return AddResponse(c=AddRequest.a + AddRequest.b)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='RPC Client', add_help=False)
+    parser = argparse.ArgumentParser(description='RPC Server', add_help=False)
     # required
     parser.add_argument('-i', '--ip', metavar='', type=str, required=False, default='0.0.0.0',
                         help='Listening IP address.')

@@ -47,9 +47,13 @@ class ClientStub(Service):
         return response
         
     @typechecked
-    def add(self, a: int, b: int) -> int:
-        request = AddRequest(server_name='add',a=a, b=b)
-        response = AddResponse()
+    def add(self, arg=AddRequest) -> AddResponse:
+        request = Request(
+            type='call',
+            service_name='add',
+            add=arg,
+        )
+        response = Response()
         response = self.__call('add', request, response)
         return response.sum
     
