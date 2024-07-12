@@ -1,7 +1,6 @@
 import argparse
 import struct
 import threading
-import time
 from rpc_pb2 import Request, Response
 from socket import *
 
@@ -34,30 +33,39 @@ class Registry:
             return
         request = Request()
         request.ParseFromString(request_data)
+        response = Response()
         if request.type == 'register':
-            response = self.__register_service(request.server_name, request.server)
+            response = self.__register_service(request.service_name, request.server)
         elif request.type == 'heartbeat':
-            response = self.__update_heartbeat(request.server_name, request.server)
+            response = self.__update_heartbeat(request.service_name, request.server)
         elif request.type == 'discover':
-            response = self.__discover_service(conn, request.service_name)
+            response = self.__discover_service(request.service_name)
         response_data = response.SerializeToString()
         conn.sendall(struct.pack('!I', len(response_data)) + response_data)
             
     def __register_service(self, service_name, server):
-        with self.lock:
-            if service_name not in self.servers:
-                self.servers[service_name] = []
-            self.servers[service_name].append(server)
-            print(f"Register service: {service_name} from {server.host}:{server.port}")
+        try:
+            with self.lock:
+                if service_name not in self.servers:
+                    self.servers[service_name] = []
+                self.servers[service_name].append(server)
+                print(f"Register service: {service_name} from {server.host}:{server.port}")
+                response = Response(
+                    type='success',
+                    content=f'{service_name} is registered successfully.'
+                )
+                return response
+        except Exception as e:
+            print(e)
             response = Response(
-                type='success',
-                content=f'{service_name} is registered successfully.'
+                type='error',
+                content=f'Error: {e}'
             )
             return response
     
     def __update_heartbeat(self, service_name, server):
         with self.lock:
-            servers = self.servers[service_name]
+            servers = self.servers.get(service_name, [])
             for s in servers:
                 if s.host == server.host and s.port == server.port:
                     response = Response(
@@ -92,7 +100,7 @@ class Registry:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='RPC Registry', add_help=False)
     # required
-    parser.add_argument('-i', '--ip', metavar='', type=str, required=False, default='0.0.0.0',
+    parser.add_argument('-i', '--ip', metavar='', type=str, required=False, default='127.0.0.1',
                         help='Listening IP address.')
     parser.add_argument('-p', '--port', metavar='', type=int, required=False, default=54321,
                         help='Listening port number.')

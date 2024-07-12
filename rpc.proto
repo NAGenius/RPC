@@ -16,18 +16,33 @@ message AddResponse {
     int32 sum = 1;
 }
 
+message SubRequest {
+    int32 a = 1;
+    int32 b = 2;
+}
+
+message SubResponse {
+    int32 diff = 1;
+}
+
 message Request {
+    // call, discover, register, heartbeat
     string type = 1;
     string service_name = 2;
-    Server server = 3;
-    AddRequest add = 4;
+    string time = 3;
+    Server server = 4;
+    AddRequest add = 5;
+    SubRequest sub = 6;
 }
 
 message Response {
+    // timeout, success, fail, error
     string type = 1;
     string content = 2;
-    repeated Server servers = 3;
-    AddResponse add = 4;
+    string time = 3;
+    repeated Server servers = 4;
+    AddResponse add = 5;
+    SubResponse sub = 6;
 }
 
 
