@@ -1,21 +1,22 @@
-import argparse
 import struct
 import threading
+import time
+from socket import *
 
 import yaml
+
 from rpc_pb2 import Request, Response
-from socket import *
 
 
 class Registry:
-    
+
     def __init__(self, host, port, heartbeat_interval=10):
         self.host = host
         self.port = port
         self.heartbeat_interval = heartbeat_interval
         self.servers = {}
         self.lock = threading.Lock()
-        
+
     def start(self):
         with socket(AF_INET, SOCK_STREAM) as s:
             s.bind((self.host, self.port))
@@ -25,7 +26,7 @@ class Registry:
                 conn, addr = s.accept()
                 with conn:
                     self.__handle_request(conn)
-                    
+
     def __handle_request(self, conn):
         length, = struct.unpack('!I', conn.recv(4))
         if not length:
@@ -39,12 +40,12 @@ class Registry:
         if request.type == 'register':
             response = self.__register_service(request.service_name, request.server)
         elif request.type == 'heartbeat':
-            response = self.__update_heartbeat(request.service_name, request.server)
+            response = self.__update_heartbeat()
         elif request.type == 'discover':
             response = self.__discover_service(request.service_name)
         response_data = response.SerializeToString()
         conn.sendall(struct.pack('!I', len(response_data)) + response_data)
-            
+
     def __register_service(self, service_name, server):
         try:
             with self.lock:
@@ -64,45 +65,37 @@ class Registry:
                 content=f'Error: {e}'
             )
             return response
-    
-    def __update_heartbeat(self, service_name, server):
+
+    def __update_heartbeat(self):
+        # time.sleep(20)
         with self.lock:
-            servers = self.servers.get(service_name, [])
-            for s in servers:
-                if s.host == server.host and s.port == server.port:
-                    response = Response(
-                        type='alive',
-                        content=f'service {service_name} on {server.host}:{server.port} is alive.'
-                    )
-                    return response
             response = Response(
-                type='dead',
-                content=f'service {service_name} on {server.host}:{server.port} is dead.'
+                type='alive',
             )
-            return response
-    
+        return response
+
     def __discover_service(self, service_name):
         with self.lock:
             servers = self.servers.get(service_name, [])
-        
+
         if not servers:
             response = Response(
                 type='fail',
                 content=f'There is no server that supports this service: {service_name}.'
             )
             return response
-        
+
         response = Response(
             type='success',
             servers=servers
         )
         return response
-    
-    
+
+
 if __name__ == '__main__':
     # 命令行形式
     # parser = argparse.ArgumentParser(description='RPC Registry', add_help=False)
-    
+
     # parser.add_argument('-i', '--ip', metavar='', type=str, required=True, default='127.0.0.1',
     #                     help='Listening IP address. Default: "127.0.0.1".')
     # parser.add_argument('-p', '--port', metavar='', type=int, required=True, default=54321,
@@ -110,14 +103,13 @@ if __name__ == '__main__':
     # parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
     #                     help='Show this help message and exit.')
     # args = parser.parse_args()
-    
+
     # 配置文件形式
     with open('config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     registry_host = config["Registry"]["host"]
     registry_port = config["Registry"]["port"]
-    
+
     registry = Registry(registry_host, registry_port)
     registry.start()
-    

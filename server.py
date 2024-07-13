@@ -1,6 +1,6 @@
-from rpc_pb2 import AddRequest, AddResponse, SubRequest, SubResponse
 import argparse
 
+from rpc_pb2 import AddRequest, AddResponse, SubRequest, SubResponse
 from serverstub import ServerStub
 from service import Service
 

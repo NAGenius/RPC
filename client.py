@@ -2,8 +2,6 @@ import yaml
 
 from clientstub import ClientStub
 from rpc_pb2 import AddRequest, SubRequest
-import argparse
-
 
 if __name__ == '__main__':
     # 命令行形式
@@ -29,4 +27,3 @@ if __name__ == '__main__':
     print(f'1 + 2 = {result}')
     result = client.sub(SubRequest(a=1, b=2)).diff
     print(f'1 - 2 = {result}')
-    

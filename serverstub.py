@@ -32,11 +32,11 @@ class ServerStub:
         # 注册服务
         self.__register_service(service_name)
 
-    def __connect(self, host, port, request, response):
+    def __connect(self, host, port, request, response, time_out):
         try:
             with socket(AF_INET, SOCK_STREAM) as s:
                 s.connect((host, port))
-                s.settimeout(self.timeout)
+                s.settimeout(time_out)
                 request_data = request.SerializeToString()
                 print(request)
                 s.sendall(struct.pack('!I', len(request_data)) + request_data)
@@ -47,6 +47,7 @@ class ServerStub:
             print(f'Connection to {host}:{port} timed out.')
             response.type = 'timeout'
             response.content = f'Error: {e}'
+            return response
 
     def __register_service(self, service_name):
         request = Request(
@@ -55,10 +56,12 @@ class ServerStub:
             server=Server(host=self.host, port=self.port),
         )
         response = Response()
-        response = self.__connect(self.registry_host, self.registry_port, request, response)
+        response = self.__connect(self.registry_host, self.registry_port, request, response, self.timeout)
         # 超时/出错（注册失败）, 重新连接一次
         if response.type == 'timeout' or response.type == 'error':
-            response = self.__connect(self.registry_host, self.registry_port, request, response)
+            print("Attempting to reconnect...")
+            time.sleep(2)
+            response = self.__connect(self.registry_host, self.registry_port, request, response, self.timeout)
             # 还是失败的话, 抛出错误
             if response.type == 'timeout' or response.type == 'error':
                 raise Exception(response.content)
@@ -98,8 +101,9 @@ class ServerStub:
                 conn.sendall(struct.pack('!I', len(response_data)) + response_data)
 
     def __run_server(self):
-        # 拿一个线程用于定时发送心跳包
-        self.executor.submit(self.__send_heartbeat)
+        # 拿一个线程用于定时发送心跳包(守护进程即可)
+        threading.Thread(target=self.__send_heartbeat, daemon=True).start()
+        # self.executor.submit(self.__send_heartbeat)
         with socket(AF_INET, SOCK_STREAM) as s:
             s.bind((self.host, self.port))
             s.listen(10)
@@ -132,19 +136,28 @@ class ServerStub:
 
     def __send_heartbeat(self):
         while True:
-            time.sleep(self.heartbeat_interval)
-            request = Request(
-                type='heartbeat',
-                server=Server(host=self.host, port=self.port),
-            )
-            response = Response()
-            response = self.__connect(self.registry_host, self.registry_port, request, response)
-            # 超时/出错（注册失败）, 重新连接一次
-            if response.type == 'timeout' or response.type == 'error':
-                response = self.__connect(self.registry_host, self.registry_port, request, response)
-                # 还是失败的话, 抛出错误
+            try:
+                # 定时发送心跳包
+                request = Request(
+                    type='heartbeat',
+                    server=Server(host=self.host, port=self.port),
+                )
+                response = Response()
+                response = self.__connect(self.registry_host, self.registry_port, request, response,
+                                          self.heartbeat_interval)
+                # 超时/出错（注册失败）, 重新连接一次
                 if response.type == 'timeout' or response.type == 'error':
-                    raise Exception(response.content)
+                    print("Attempting to reconnect...")
+                    response = self.__connect(self.registry_host, self.registry_port, request, response,
+                                              self.heartbeat_interval)
+                    # 还是失败的话, 抛出错误
+                    if response.type == 'timeout' or response.type == 'error':
+                        raise Exception(response.content)
+            except Exception as e:
+                print(f"Heartbeat failed: {e}")
+                raise e
+            finally:
+                time.sleep(self.heartbeat_interval)
 
     def start(self):
         # self.executor.submit(self.__run_server)

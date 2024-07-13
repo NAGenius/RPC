@@ -1,5 +1,6 @@
 import random
 import struct
+import time
 from socket import *
 
 import yaml
@@ -36,6 +37,7 @@ class ClientStub(Service):
             print(f'Connection to {host}:{port} timed out.')
             response.type = 'timeout'
             response.content = f'Error: {e}'
+            return response
 
     def __discover(self, service_name):
         request = Request(type='discover', service_name=service_name, )
@@ -43,6 +45,8 @@ class ClientStub(Service):
         response = self.__connect(self.registry_host, self.registry_port, request, response)
         # 超时
         if response.type == 'timeout':
+            print("Attempting to reconnect...")
+            time.sleep(2)
             response = self.__connect(self.registry_host, self.registry_port, request, response)
             # 还是失败的话, 抛出错误
             if response.type == 'timeout':
@@ -63,6 +67,8 @@ class ClientStub(Service):
         response = self.__connect(server.host, server.port, request, response)
         # 超时
         if response.type == 'timeout':
+            print("Attempting to reconnect...")
+            time.sleep(2)
             response = self.__connect(self.registry_host, self.registry_port, request, response)
             # 还是失败的话, 抛出错误
             if response.type == 'timeout':
