@@ -11,7 +11,7 @@ from service import Service
 
 class ClientStub(Service):
 
-    def __init__(self, host, port, time_out=30):
+    def __init__(self, host, port):
         self.host = host
         self.port = port
         with open('config.yaml', 'r') as f:
@@ -19,13 +19,11 @@ class ClientStub(Service):
 
         self.registry_host = config["Registry"]["host"]
         self.registry_port = config["Registry"]["port"]
-        self.timeout = time_out
 
     def __connect(self, host, port, request, response):
         try:
             with socket(AF_INET, SOCK_STREAM) as s:
                 s.connect((host, port))
-                s.settimeout(self.timeout)
                 print(request)
                 request_data = request.SerializeToString()
                 s.sendall(struct.pack('!I', len(request_data)) + request_data)
@@ -58,8 +56,6 @@ class ClientStub(Service):
             pass
         # 采用随机选择策略实现负载均衡
         server = random.choice(servers)
-        # 这里要注意：因为有些服务器是监听的'0.0.0.0', 而这不是一个有效的ip地址，所以应该做一下处理(这里简单化处理为本机地址)
-        server.host = '127.0.0.1'
         response = self.__connect(server.host, server.port, request, response)
         # 超时
         if response.type == 'timeout':

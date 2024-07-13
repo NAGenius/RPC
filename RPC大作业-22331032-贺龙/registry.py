@@ -113,11 +113,11 @@ if __name__ == '__main__':
     
     # 配置文件形式
     with open('config.yaml', 'r') as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
+            config = yaml.load(f, Loader=yaml.FullLoader)
 
-    registry_host = config["Registry"]["host"]
-    registry_port = config["Registry"]["port"]
+    host = config["Registry"]["host"]
+    port = config["Registry"]["port"]
     
-    registry = Registry(registry_host, registry_port)
+    registry = Registry(host, port)
     registry.start()
     

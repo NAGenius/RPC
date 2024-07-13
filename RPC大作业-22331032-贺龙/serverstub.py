@@ -1,10 +1,8 @@
 import struct
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from socket import *
 
-import select
 import yaml
 
 from rpc_pb2 import Request, Response, Server
@@ -12,7 +10,7 @@ from rpc_pb2 import Request, Response, Server
 
 class ServerStub:
 
-    def __init__(self, host, port, heartbeat_interval=10, time_out=30):
+    def __init__(self, host, port, heartbeat_interval=10):
         self.host = host
         self.port = port
         self.services = {}
@@ -24,8 +22,6 @@ class ServerStub:
 
         self.lock = threading.Lock()
         self.heartbeat_interval = heartbeat_interval
-        self.executor = ThreadPoolExecutor(max_workers=10)
-        self.timeout = time_out
 
     def add_service(self, service_name, service):
         self.services[service_name] = service
@@ -36,7 +32,6 @@ class ServerStub:
         try:
             with socket(AF_INET, SOCK_STREAM) as s:
                 s.connect((host, port))
-                s.settimeout(self.timeout)
                 request_data = request.SerializeToString()
                 print(request)
                 s.sendall(struct.pack('!I', len(request_data)) + request_data)
@@ -66,6 +61,7 @@ class ServerStub:
     def __handle_request(self, conn):
         with conn:
             while True:
+                print(conn)
                 length_prefix = conn.recv(4)
                 if not length_prefix:
                     break
@@ -98,37 +94,14 @@ class ServerStub:
                 conn.sendall(struct.pack('!I', len(response_data)) + response_data)
 
     def __run_server(self):
-        # 拿一个线程用于定时发送心跳包
-        self.executor.submit(self.__send_heartbeat)
         with socket(AF_INET, SOCK_STREAM) as s:
             s.bind((self.host, self.port))
             s.listen(10)
-            s.setblocking(False)
             print(f'Server is listening on {self.host}:{self.port}')
-            inputs = [s]
-            outputs = []
             while True:
-                r, w, e = select.select(inputs, outputs, inputs)
-                for sc in r:
-                    if sc is s:
-                        # 处理新连接
-                        conn, addr = s.accept()
-                        # 设置为非阻塞
-                        conn.setblocking(False)
-                        inputs.append(conn)
-                        print(f'server connected by {addr}')
-                        # 提交处理任务到线程池
-                        self.executor.submit(self.__handle_request, conn)
-                        # threading.Thread(target=self.__handle_request, args=(conn,)).start()
-                    else:
-                        inputs.remove(sc)
-
-                for sc in e:
-                    print("Handling exceptional condition for", sc.getpeername())
-                    inputs.remove(sc)
-                    if sc in outputs:
-                        outputs.remove(sc)
-                    sc.close()
+                conn, addr = s.accept()
+                print(f'server connected by {addr}')
+                threading.Thread(target=self.__handle_request, args=(conn,)).start()
 
     def __send_heartbeat(self):
         while True:
@@ -147,8 +120,5 @@ class ServerStub:
                     raise Exception(response.content)
 
     def start(self):
-        # self.executor.submit(self.__run_server)
-        # self.executor.submit(self.__send_heartbeat)
-        # threading.Thread(target=self.__run_server).start()
-        # threading.Thread(target=self.__send_heartbeat).start()
-        self.__run_server()
+        threading.Thread(target=self.__run_server).start()
+        threading.Thread(target=self.__send_heartbeat).start()

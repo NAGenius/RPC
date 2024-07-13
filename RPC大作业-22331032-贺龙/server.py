@@ -17,9 +17,9 @@ class MyService(Service):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='RPC Server', add_help=False)
     # required
-    parser.add_argument('-i', '--ip', metavar='', type=str, required=False, default='0.0.0.0',
+    parser.add_argument('-i', '--ip', metavar='', type=str, required=True, default='0.0.0.0',
                         help='Listening IP address. Default: "0.0.0.0".')
-    parser.add_argument('-p', '--port', metavar='', type=int, required=False, default=50000,
+    parser.add_argument('-p', '--port', metavar='', type=int, required=True, default=50000,
                         help='Listening port number. Default: 50000.')
     parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
                         help='Show this help message and exit.')
